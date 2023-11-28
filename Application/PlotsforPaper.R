@@ -67,15 +67,13 @@ nmin = 20; nev = 10;
 nseq <- round(seq(nmin,91,length.out=nev))
 nseq
 LearningCurve = cbind.data.frame("ntrain" = nseq,
-                                 "rigid EBcoBART" = AUCs_EBco_rig,
-                                 "rigid default BART" = AUCs_def_rig,
-                                 "flexible EBcoBART" = AUCs_EBco_flex,
-                                 "flexible default BART" = AUCs_def_flex)
+                                 "EB-coBART" = AUCs_EBco_flex,
+                                 "BART" = AUCs_def_flex)
 
 LearningCurve1 = cbind.data.frame("ntrain" = nseq,
                                  "EBcoBART" = AUC_EBco,
                                  "IPI" = Est_IPI)
-
+library(ggplot2); library(viridis)
 name <- paste("LearningCurve","EBcoBart.pdf", sep = "_")
 pdf(name, width=4,height=3)
 p = ggplot(LearningCurve1, aes(x = ntrain, y = EBcoBART)) +
@@ -129,10 +127,11 @@ print(pkpd)
 dev.off()
 scale_shape_m
 names(LearningCurve)
-LearningCurve1 <- pivot_longer(LearningCurve, cols = c("rigid EBcoBART","rigid default BART","flexible EBcoBART","flexible default BART"), names_to = "Method", values_to = "Val")
+lib
+LearningCurve1 <- pivot_longer(LearningCurve, cols = c("EB-coBART","BART"), names_to = "Method", values_to = "Val")
 
-PD$method[which(PD$method=="defaultBART")]<-"default BART"
-
+PD$method[which(PD$method=="defaultBART")]<-"BART"
+PD$method[which(PD$method=="EBcoBART")]<-"EB-coBART"
 
 name <- paste("PartialDependence","EBcoBart.pdf", sep = "_")
 pdf(name, width=4,height=3)
@@ -150,14 +149,14 @@ dev.off()
 
 
 
-name <- paste("LearningCurve","EBcoBart.pdf", sep = "_")
+name <- paste("LearningCurve_EBcoBart.pdf", sep = "_")
 pdf(name, width=4,height=3)
 p = ggplot(LearningCurve1, aes(x = ntrain, y = Val, color = Method, shape = Method)) +
   geom_point(size=3) + coord_cartesian(ylim = c(0.5,0.75)) +
   geom_line(linewidth=0.8) +
   theme_light() +
   scale_color_viridis(discrete = T, option = "G",begin = 0.2, end = 0.7) +
-  theme(legend.title = element_blank()) + labs(x="Training set size",y="AUC")
+  theme(legend.title = element_blank(),legend.position = c(0.2,0.85)) + labs(x="Training set size",y="AUC")
 p
 
 dev.off()
@@ -205,12 +204,12 @@ dat1 = rbind.data.frame(CNV1,Mut1,Trans1,dat[140,])
 waic
 
 plot.waic = cbind.data.frame("Iteration"= seq(1,18,1),"WAIC" = waic)
-library(ggplot2); library(viridis)
+library(ggplot2); library(viridis); library(cowplot)
 cols = viridis(4)
 
 name <- paste("EBcoBART_flex_True_GroupWeights.pdf")
 pdf(name, width=4,height=3)
-p <- ggplot(dat1, aes(x=p.values, y=preds, color=Groups,shape=Groups)) + # asking it to set the color by the variable "group" is what makes it draw three different lines
+p1 <- ggplot(dat1, aes(x=p.values, y=preds, color=Groups,shape=Groups)) + # asking it to set the color by the variable "group" is what makes it draw three different lines
   geom_point(size=c(rep(2,139),3)) + theme_light() +
   #scale_color_viridis(discrete = T, option = "D") +
   labs(x="- logit(p-values)", y="Cumulative Weight", color = "Variable type") +
@@ -221,17 +220,48 @@ p <- ggplot(dat1, aes(x=p.values, y=preds, color=Groups,shape=Groups)) + # askin
   scale_shape_manual(name = "Group",
                      labels = c("CNV","Mutation","Translocation","IPI"),
                      values = c(15, 17, 18, 19))
-p  
+p1  
 dev.off()
 
 name <- paste("EBcoBART_flex_True_WAIC.pdf")
 pdf(name, width=4,height=3)
-g <- ggplot(plot.waic, aes(x=Iteration, y=WAIC)) + # asking it to set the color by the variable "group" is what makes it draw three different lines
+g1 <- ggplot(plot.waic, aes(x=Iteration, y=WAIC)) + # asking it to set the color by the variable "group" is what makes it draw three different lines
   geom_point() + theme_light() +
   scale_color_viridis(discrete = T, option = "A") +
   labs(x="Iteration", y="WAIC") +
   geom_vline(xintercept=which(waic==min(waic)),linetype=2,linewidth=1, col = "red")
-g
+g1
+dev.off()
+
+grid.arrange(p,g1,p1,g)
+library(patchwork)
+name <- paste("Figure3_Application.pdf")
+pdf(name, width=8,height=6)
+plot_grid(p,g1,p1,g,
+          labels = c("a", "b", "c","d"))
+
+dev.off()
+
+name <- paste("Figure3_Application_Optional1.pdf")
+pdf(name, width=8,height=3)
+plot_grid(g1,p1,
+          labels = c("a", "b"))
+
+dev.off()
+
+name <- paste("Figure3_Application_Optional2.pdf")
+pdf(name, width=8,height=3)
+plot_grid(p,g,
+          labels = c("a", "b"))
+
+dev.off()
+
+name <- paste("Figure3_Application_Optional3.pdf")
+pdf(name, width=4,height=3)
+p
+
 dev.off()
 
 
+
+getwd()

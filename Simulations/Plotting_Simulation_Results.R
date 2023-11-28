@@ -127,12 +127,12 @@ dev.off()
 
 
 #res_varsel <- c()
-res_varsel <- c()
-G = 5
+#res_varsel <- c()
+G = 20
 
 model <- "flexible"
 model <- "rigid"
-Setting <- "G = 5, N = 100"
+Setting <- "G = 5, N = 200"
 
 ### results
 WAIC = results$WAIC
@@ -146,23 +146,17 @@ for (i in 1:500) {
 }
 
 names(EstProbs) = paste0("G", seq(1,G,1),sep = "")
-colMeans(EstProbs)
-median(EstProbs[,5])
-
-length(which(EstProbs[,5]<=0.1))
-
 EstProbs <- cbind.data.frame(EstProbs,"Model"=rep(model,500),"Setting" = rep(Setting,500))
-boxplot(EstProbs)
 res_varsel <- rbind(res_varsel,EstProbs)
 
 
 res_varsel$Model<- factor(res_varsel$Model, levels = unique(res_varsel$Model))
 res_varsel$Setting<- factor(res_varsel$Setting, levels = unique(res_varsel$Setting))
 
-save(res_varsel,file = "results_VarSel_Friedman_G=5_N=100_Uninformative.Rdata")
+save(res_varsel,file = "results_VarSel_Friedman_G=20_Friedman.Rdata")
 getwd()
 load("results_VarSel_Friedman_G=20.Rdata")
-G=5
+G=20
 library(tidyr)
 library(dplyr)
 library(ggplot2)
@@ -180,24 +174,43 @@ res_varsel1 <- pivot_longer(res_varsel, cols = c(1,2,3,4,5,6,7,8,9,10), names_to
 res_varsel1 <- pivot_longer(res_varsel, cols = c(1,2,3,4,5), names_to = "Group", values_to = "Val")
 
 res_varsel1$Group <- factor(res_varsel1$Group, levels = unique(res_varsel1$Group))
+library(viridis);library(ggplot2)
 
-
-
-name <- paste("GroupWeights_UinformativeFriedman_G=5","EBBart_WAIC.pdf", sep = "_")
-pdf(name, width=7,height=2.5)
+getwd()
+name <- paste("GroupWeights_Friedman_G20_EBBart_WAIC.pdf", sep = "_")
+pdf(name, width=7,height=3)
 bp <- ggplot(res_varsel1, aes(x=Group, y=Val)) +
   geom_boxplot(aes(fill=Model),fatten =1, outlier.shape = NA) + #coord_cartesian(ylim =  c(0.9, 1.3)) +
   #scale_y_continuous(breaks=seq(0.8,2.1,0.2)) +
   theme_light() +
   scale_fill_viridis(discrete = T, option = "G",begin = 0.4, end = 1)+
-  theme(legend.title = element_blank()) + labs(x="Group",y="Group Weights") +
+  theme(legend.title = element_blank(), legend.position = c(0.92,0.82)) + labs(x="Group",y="Group Weights") +
   geom_hline(yintercept=0.2,linetype=3,linewidth=1)
-
 bp
-#bp + facet_grid(. ~ Setting)
+bp1 = bp + facet_grid(. ~ Setting)
+bp1
+gp <- ggplot(res_varsel1, aes(x=Group, y=Val)) +
+  geom_boxplot(aes(fill=Model),fatten =1, outlier.shape = NA) + #coord_cartesian(ylim =  c(0.9, 1.3)) +
+  #scale_y_continuous(breaks=seq(0.8,2.1,0.2)) +
+  theme_light() +
+  scale_fill_viridis(discrete = T, option = "G",begin = 0.4, end = 1)+
+  theme(legend.title = element_blank(), legend.position = c(0.92,0.82)) + labs(x="Group",y="Group Weights") +
+  geom_hline(yintercept=0.05,linetype=3,linewidth=1)
+gp
+gp1 = gp + facet_grid(. ~ Setting)
+gp1
+
+
+
+
+
+library(cowplot)
+name <- paste("Figure1_Simulations.pdf", sep = "_")
+pdf(name, width=8,height=6)
+plot_grid(bp1, gp1, ncol = 1,
+          labels = c("a", "b"))
 dev.off()
 
-minima
 
 ############################################################33
 #### linear ####
