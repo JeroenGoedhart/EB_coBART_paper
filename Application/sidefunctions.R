@@ -50,11 +50,10 @@ LikelihoodTreeStructure <- function(alpha,beta, Trees) {
   return(-S)
 }
 
-MCMC_convergence <- function(Samples, Nchain){
-  library(coda)
-  chains <- split(Samples, ceiling(seq_along(Samples)/(length(Samples)/Nchain)))
-  chains <- lapply(chains, function (x) as.mcmc(x))
-  Gelman <- gelman.diag(chains, confidence = 0.95, autoburnin = F)
-  
-  return(Gelman)
+MCMC_convergence <- function(Samples){
+  if (!require(posterior, quietly = T)) {stop("Package posterior not installed")}
+  if (class(Samples)[1] != "matrix") {stop("Samples should be specified as matrix with nsample rows and nchain columns")}
+  if(nrow(Samples)<ncol(Samples)){print("Are you sure Samples is specified by nsample rows and nchain columns")}
+  Rhat = rhat(Samples)
+  return(Rhat)
 }

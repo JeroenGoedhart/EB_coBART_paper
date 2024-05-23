@@ -42,7 +42,7 @@ sigma <- 1.0
 N <- 100
 G <- 5   #number of groups
 GroupStructure <- c(rep(p/G,G))
-Ntest =1000
+Ntest =500
 
 
 ### Data setting 1: sparse and nonlinear ###
@@ -103,9 +103,10 @@ for (j in 1:nrep){    # for loop representing simulated data sets
   #### Entering EBcoBART (iteratively updating splitprobs hyperparameter of dbarts) ####
   for (i in 1:nIter) {
     print(paste("iteration",i,sep = " "))
+    library(dbarts)
     fit <- bart(x.train = X, y.train = Y, # training data
                 x.test = Xtest,  # testing data
-                ndpost = 120000L,   # number of posterior samples
+                ndpost = 12000L,   # number of posterior samples
                 nskip = 12000L, # number of "warmup" samples to discard
                 nchain = 10L,   # number of independent, parallel chains
                 ntree = 50L,    # number of trees per chain
@@ -145,7 +146,56 @@ results <- list(GroupProbs = GroupProbabilities,TestPerformance = PMSEstest, wai
 
 save(results, file = name)
 
+#############################################################
+########################### DART ############################
+#############################################################
+p <- 500
+sigma <- 1.0
+N <- 100
+Ntest <- 500
+g <- function(x) {
+  10 * sin(pi * x[,1] * x[,2]) + 20 * (x[,101] - 0.5)^2 + 10 * x[,102] + 10 * x[,3]
+}
 
+Xtest <- matrix(runif(Ntest*p),Ntest,p)
+Ytest <- g(Xtest) + rnorm(Ntest,0,sigma)
+library(BART)
+k =2; base = .95; power = 2.0 # Tree parameters
+nu <- 10 ; quant <- .75 # Error variance hyperparameters
+
+nchain = 10
+theta = ncol(Xtest)
+
+nrep <- 500
+PMSEstest <- c()
+for (j in 1:nrep){    # for loop representing simulated data sets
+  print(paste("Sim","Iter",j,sep = " "))
+  
+  # simulate training data, either setting 1 or setting 2
+  set.seed(j^3+239)
+  X <- matrix(runif(N * p), N, p)
+  Y <- g(X)+ rnorm(N, 0, sigma)
+  sigest <- sd(Y)*0.667
+  
+  pred_sBART = matrix(NA,nrow=nchain,ncol = nrow(Xtest))
+  for (i in 1:nchain) {
+    
+    fit = wbart(x.train = X, y.train = Y, x.test = Xtest,
+                base = base, power = power, k = k,
+                ntree = 50,
+                ndpost = 5000L,   # number of posterior samples
+                nskip = 5000L, # number of "warmup" samples to discard
+                sparse = T, theta = theta,printevery = 0)
+    pred_sBART[i,] <- fit$yhat.test.mean
+    remove(fit)
+  }
+  preds <- colMeans(pred_sBART)
+  PMSEstest[j] <- mean((preds-Ytest)^2) 
+  remove(X,Y,preds)
+}
+
+name <- paste("Friedman",N, "DART.Rdata", sep = "_")
+save(PMSEstest,file = name)
 #############################################################
 ########################### ecpc ############################
 #############################################################

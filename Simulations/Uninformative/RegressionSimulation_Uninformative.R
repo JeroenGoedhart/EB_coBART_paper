@@ -39,11 +39,26 @@ GroupProb <- function(VarCounts,Str_Group){
 p <- 500
 sigma <- 1.0
 N <- 100
+Ntest = 500
 G <- 5   #number of groups
 GroupStructure <- c(rep(p/G,G))
-Ntest =500
 
 
+g <- function(x){
+  10 * sin(pi * x[,1] * x[,2]) + 20 * (x[,3] - 0.5)^2 + 10 * x[,4] + 10 * x[,5]
+}
+
+
+dat = vector(type='list',length = G)
+for (i in 1:G){
+  dat[[i]] = matrix(runif(N * GroupStructure[i]), N, GroupStructure[i])
+}
+y=lapply(dat, function (x) g(x) + rnorm(N,0,sigma))
+X = do.call(cbind,dat); remove(dat)
+Y = Reduce("+",y)
+
+
+# G = 5
 g <- function(x) {
   10 * sin(pi * x[,1] * x[,2]) + 20 * (x[,3] - 0.5)^2 + 10 * x[,4] + 10 * x[,5] +
     10 * sin(pi * x[,101] * x[,102]) + 20 * (x[,103] - 0.5)^2 + 10 * x[,104] + 10 * x[,105] +
@@ -51,6 +66,25 @@ g <- function(x) {
     10 * sin(pi * x[,301] * x[,302]) + 20 * (x[,303] - 0.5)^2 + 10 * x[,304] + 10 * x[,305] +
     10 * sin(pi * x[,401] * x[,402]) + 20 * (x[,403] - 0.5)^2 + 10 * x[,404] + 10 * x[,405]
 }
+
+# G = 10
+g <- function(x) {
+  10 * sin(pi * x[,1] * x[,2]) + 20 * (x[,3] - 0.5)^2 + 5 * x[,4] 
+  10 * sin(pi * x[,51] * x[,52]) + 20 * (x[,53] - 0.5)^2 + 5 * x[,54] 
+  10 * sin(pi * x[,101] * x[,102]) + 20 * (x[,103] - 0.5)^2 + 5 * x[,104] 
+  10 * sin(pi * x[,151] * x[,152]) + 20 * (x[,153] - 0.5)^2 + 5 * x[,154] 
+  10 * sin(pi * x[,401] * x[,402]) + 20 * (x[,403] - 0.5)^2 + 5 * x[,404] 
+}
+
+
+# G = 15
+
+# G = 20
+
+# G = 50
+
+
+
 
 
 Xtest <- matrix(runif(Ntest*p),Ntest,p)

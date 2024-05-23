@@ -128,6 +128,70 @@ for (i in 1:nrep){
 }
 RatioPMSEtest
 
+######### DART #########
+########################
+setwd("C:/Users/VNOB-0732/Desktop/R files/EB_coBART_paper/Simulations/Linear_Dense")
+N = 100
+Ntest = 500
+p = 500
+sigma = 1
+load("betas_for_sim.Rdata")
+
+library(mvtnorm)
+set.seed(12)
+Xtest <- rmvnorm(Ntest, mean = rep(0, p), #sigma = CorrX,
+                 method= "chol", pre0.9_9994 = FALSE, checkSymmetry = TRUE)
+Ytest <- Xtest %*% betas1 + rnorm(Ntest, mean = 0, sd = sigma)
+
+probs <- c(rep(1/p,p))
+k =2; base = .95; power = 2.0 # Tree parameters
+nu <- 10 ; quant <- .75 # Error variance hyperparameters
+nrep <-500
+
+nchain = 10
+theta = ncol(Xtest)
+
+nrep <- 500
+library(BART)
+PMSEstest <- c()
+for (j in 1:nrep){    # for loop representing simulated data sets
+  print(paste("Sim","Iter",j,sep = " "))
+  
+  # simulate training data, either setting 1 or setting 2
+  set.seed(j^3+239)
+  X <- rmvnorm(N, mean = rep(0, p), #sigma = CorrX,
+               method= "chol", pre0.9_9994 = FALSE, checkSymmetry = TRUE)
+  Y <- X %*% betas1 + rnorm(N, 0, sigma)
+  
+  sigest <- sd(Y)*0.667
+  
+  pred_sBART = matrix(NA,nrow=nchain,ncol = nrow(Xtest))
+  for (i in 1:nchain) {
+    
+    fit = wbart(x.train = X, y.train = Y, x.test = Xtest,
+                base = base, power = power, k = k,
+                ntree = 50,
+                ndpost = 5000L,   # number of posterior samples
+                nskip = 5000L, # number of "warmup" samples to discard
+                sparse = T, theta = theta,printevery =10000)
+    pred_sBART[i,] <- fit$yhat.test.mean
+    remove(fit)
+  }
+  preds <- colMeans(pred_sBART)
+  PMSEstest[j] <- mean((preds-Ytest)^2) 
+  remove(X,Y,preds)
+}
+mean(PMSEstest)
+name <- paste("LinDense",N, "DART.Rdata", sep = "_")
+save(PMSEstest,file = name)
+
+
+
+
+
+
+######## ECPC and CoRF ######
+#############################
 
 library(ecpc); library(mvtnorm); library(randomForestSRC)
 nrep = 500

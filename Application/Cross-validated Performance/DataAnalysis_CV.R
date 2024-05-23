@@ -18,7 +18,7 @@ CoData = dat$CoData # Codata matrix, consists of p values (on logit scale) of ea
 
 source('sidefunctions.R')
 set.seed(2)
-folds <- CVfolds(Y=Ytrain, balance = T, kfold = 10, nrepeat = 5) ## folds for 5 times repeated 10 fold CV
+folds <- CVfolds(Y=Ytrain, balance = T, kfold = 10, nrepeat = 3) ## folds for 5 times repeated 10 fold CV
 save(folds, file = "folds.Rdata")
 
 
@@ -434,8 +434,7 @@ for (j in 1:length(folds)) {
 
 Ridge = cbind.data.frame(AUC = AUC_ridge, Brier = Brier_ridge)
 ECPC = cbind.data.frame(AUC = AUC_ecpc, Brier = Brier_ecpc)
-colMeans(Ridge[1:30,])
-colMeans(ECPC[1:30,])
+
 
 load("CVResults_performances_lymphoma_2_2_.95.Rdata")
 
@@ -450,15 +449,61 @@ save(results,file = name)
 
 
 
- 
+
+
+##### DART fit #####
+load("DatForPaper.Rdata")
+X = dat$Xtrain # feature matrix, 140 features of which 67 copy number variation, 69 mutation, 3 translocation, and the IPI
+Y = dat$Ytrain #
+
+load("CVResults_EBcoBART_lymphoma_2_2_.95_Treeupdate.Rdata")
+
+folds = results$folds; remove(results); gc()
 
 
 
 
+library(BART)
 
+nchain = 10
+theta = ncol(X)
+AUC <- c()
+Brier <- c()
+for (j in 1:length(folds)) {
+  print(paste("Fold",j,sep = " "))
+  ids = folds[[j]]
+  Xtrain = X[-ids,]
+  Ytrain <- Y[-ids]
+  Xtest = X[ids,]
+  Ytest <- Y[ids]
+  pred_sBART = matrix(NA,nrow=nchain,ncol = length(Ytest))
+  for (i in 1:nchain) {
+    
+    print(paste("Chain",i,sep = " "))
+    set.seed(34*i)
+    fit = pbart(x.train = Xtrain, y.train = Ytrain, x.test = Xtest,
+                base = .95, power = 2, k = 2,
+                ndpost = 12000L,   # number of posterior samples
+                nskip = 12000L, # number of "warmup" samples to discard
+                sparse = T, theta = theta,printevery=50000)
+    pred_sBART[i,] <- fit$prob.test.mean
+  }
+  
+  pred_sBART1 = colMeans(pred_sBART)
+  
+  AUC[j] <- roc(Ytest, pred_sBART1, ci = T)$auc 
+  Brier[j] = mean((pred_sBART1-Ytest)^2)
+  remove(Xtrain,Ytrain,Xtest,Ytest,ids,pred_sBART,pred_sBART1)
+}
+mean(AUC)
+mean(Brier)
+DART = cbind.data.frame(AUC = AUC, Brier = Brier)
 
+load("CVedPerformances_lymphoma_all.Rdata")  
+library(rlist)
 
-
-
-
-
+results = list.append(results2,"DART"= DART)
+name = "CVedPerformances_lymphoma_all.Rdata"
+save(results,file = name) 
+load("CVedPerformances_lymphoma_all.Rdata")  
+  
