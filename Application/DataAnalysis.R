@@ -5,7 +5,7 @@ setwd("C:/Users/VNOB-0732/Desktop/R files/EB_coBART_paper/Application")
 library(dbarts)
 library(loo)
 library(pROC)
-
+library(shapr)
 gc()
 
 
@@ -194,13 +194,17 @@ fit <- bart(x.train = Xtrain, y.train = Ytrain,
             x.test = Xtest,
             ndpost = 12000L,   # number of posterior samples
             nskip = 12000L, # number of "warmup" samples to discard
-            nchain = 10L,   # number of independent, parallel chains
+            nchain = 5L,   # number of independent, parallel chains
             ntree = 50L,    # number of trees per chain
             keeptrees = F,
             verbose = F,
             usequants = F,
             k = k_min, base = base_min, power = 2, # hyperparameters tree
             splitprobs = probsmax, keepsampler = F, seed = 22333) 
+
+
+
+
 Samples = fit$yhat.train
 dim(Samples)
 ids <- sample(1:101, 30, replace = F)
@@ -210,7 +214,6 @@ for (i in 1:length(ids)) {
   
 }
 
-
 ypred <- pnorm(fit$yhat.test)
 ypred <- colMeans(ypred)
 
@@ -218,6 +221,7 @@ AUC_coBART <- roc(Ytest, ypred, ci = T)
 Brier_coBART <- mean((ypred - Ytest)^2)
 AUC_coBART
 Brier_coBART
+
 
 ##### default BART ####
 model <- "flexible"
@@ -308,7 +312,7 @@ fit$beta
 fit$intercept
 
 pROC::auc(Ytest,ridge_pred) # ridge
-pROC::auc(Ytest,a[,5]) # ecpc
+pROC::auc(Ytest,ecpc_pred) # ecpc
 
 ### corf ###
 library(CoRF)
@@ -360,19 +364,48 @@ roc.test(response = Ytest, predictor1=ypred,predictor2=preds1,
 
 ##### DART fit #####
 library(BART)
-set.seed(3456)
-fit = pbart(x.train = Xtrain, y.train = Ytrain, x.test = Xtest,
-            base = .95, power = 2, k = 2,
-            ndpost = 80000L,   # number of posterior samples
-            nskip = 20000L, # number of "warmup" samples to discard
-            #nchain = 10L,
-            keepevery = 20L,
-            binaryOffset = mean(Ytrain),
-            sparse = T, rho = ncol(Xtrain)/2)
+pred_sBART = matrix(NA,nrow=nchain,ncol = 83)
+Vars = matrix(NA,nrow = nchain, ncol = 140)
+colnames(Vars)=names(Xtrain)
 
-pred_sBART <- fit$prob.test.mean
-AUC_1 <- roc(Ytest, pred_sBART, ci = T) # base RF
+nchain = 10
+theta = ncol(Xtrain)
+for (i in 1:nchain) {
+  
+  print(i)
+  set.seed(34*i)
+  fit = pbart(x.train = Xtrain, y.train = Ytrain, x.test = Xtest,
+              base = .95, power = 2, k = 2,
+              ndpost = 12000L,   # number of posterior samples
+              nskip = 12000L, # number of "warmup" samples to discard
+              sparse = T, theta = theta,printevery=12000)
+  pred_sBART[i,] <- fit$prob.test.mean
+  Vars[i,] = colMeans(fit$varprob)
+  remove(fit)
+  
+}
+0.009/0.007
+
+Vars1=sort(colMeans(Vars),decreasing = T)
+Vars1["IPI"]; which(names(Vars1)=="IPI")
+1/140
+sort(colMeans(Vars))
+pred_sBART1 = colMeans(pred_sBART)
+#library(pROC)
+AUC_1 <- roc(Ytest, pred_sBART1, ci = T) # base RF
+Brier = mean((pred_sBART1-Ytest)^2)
 AUC_1
+Brier1 = (pred_sBART1-Ytest)^2; Brier2 = (ypred-Ytest)^2
+
+wilcox.test(Brier1,Brier2, paired = TRUE, alternative = "two.sided")
+roc.test(response = Ytest, predictor1=ypred,predictor2=pred_sBART1,
+         paired =T)
+
+Brier
+AUC_1
+library(bartMachine)
+bart_machine = bartMachine(Xtrain, factor(Ytrain), sparse)
+?bartMachine
 
 ### Cross-validation for BART ###
 #################################

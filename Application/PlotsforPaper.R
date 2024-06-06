@@ -20,6 +20,7 @@ AUCs_def_flex <- unlist(lapply(AUCs_def_flex, mean))
 AUCs_EBco_flex <- unlist(lapply(AUCs_EBco_flex, mean))
 
 remove(results1,AUCs_EBco,AUCs_def)
+results <- results1
 Groupprobs <- results$Probs
 WAIC <- results$waic
 k <- results$k
@@ -76,7 +77,7 @@ LearningCurve1 = cbind.data.frame("ntrain" = nseq,
 library(ggplot2); library(viridis)
 name <- paste("LearningCurve","EBcoBart.pdf", sep = "_")
 pdf(name, width=4,height=3)
-p = ggplot(LearningCurve1, aes(x = ntrain, y = EBcoBART)) +
+p = ggplot(LearningCurve, aes(x = ntrain, y = EBcoBART)) +
   geom_point(size=3) + coord_cartesian(ylim = c(0.5,0.75)) +
   geom_line(linewidth=0.8) +
   theme_light() +
@@ -140,7 +141,7 @@ g = ggplot(PD, aes(x = IPI, y = average, color = method, shape = method)) +
   geom_point(size = 3) +
   geom_line(linewidth=0.8) +
   theme_light() +
-  scale_color_viridis(discrete = T, option = "G",begin = 0.2, end = 0.7)+
+  scale_color_viridis(discrete = T, option = "F",begin = 0.1, end = 0.5)+
   theme(legend.title = element_blank(), legend.position = c(0.2,0.85)) + labs(x="IPI",y="Latent Response")
 g
 
@@ -155,7 +156,7 @@ p = ggplot(LearningCurve1, aes(x = ntrain, y = Val, color = Method, shape = Meth
   geom_point(size=3) + coord_cartesian(ylim = c(0.5,0.75)) +
   geom_line(linewidth=0.8) +
   theme_light() +
-  scale_color_viridis(discrete = T, option = "G",begin = 0.2, end = 0.7) +
+  scale_color_viridis(discrete = T, option = "F",begin = 0.1, end = 0.5)+
   theme(legend.title = element_blank(),legend.position = c(0.2,0.85)) + labs(x="Training set size",y="AUC")
 p
 
@@ -164,6 +165,7 @@ getwd()
 #################################
 gc()
 load("Results/FinalModelEBCoBARTResults1_.95_2_2.Rdata")
+load("C:/Users/VNOB-0732/Desktop/R files/EB_coBART_paper/Application/Results/EBCoBARTfit_flexible_TRUE_.Rdata")
 library(ggplot2); library(tidyr); library(viridis); library(gridExtra)
 waic <- results$WAICs
 waic
@@ -205,12 +207,14 @@ waic
 
 plot.waic = cbind.data.frame("Iteration"= seq(1,18,1),"WAIC" = waic)
 library(ggplot2); library(viridis); library(cowplot)
+cols = viridis(4, begin = 0, end = 0.8, option = "A")
 cols = viridis(4)
+cols[4]<-"darkgray"
 
 name <- paste("EBcoBART_flex_True_GroupWeights.pdf")
 pdf(name, width=4,height=3)
 p1 <- ggplot(dat1, aes(x=p.values, y=preds, color=Groups,shape=Groups)) + # asking it to set the color by the variable "group" is what makes it draw three different lines
-  geom_point(size=c(rep(2,139),3)) + theme_light() +
+  geom_point(size=c(rep(3,139),3)) + theme_light() +
   #scale_color_viridis(discrete = T, option = "D") +
   labs(x="- logit(p-values)", y="Cumulative Weight", color = "Variable type") +
   theme(legend.position = c(0.2, 0.70)) +
@@ -219,8 +223,10 @@ p1 <- ggplot(dat1, aes(x=p.values, y=preds, color=Groups,shape=Groups)) + # aski
                       values = cols) +   
   scale_shape_manual(name = "Group",
                      labels = c("CNV","Mutation","Translocation","IPI"),
-                     values = c(15, 17, 18, 19))
-p1  
+                     values = c(15, 17, 18, 19)) 
+  
+p1<- p1  + guides(shape = guide_legend(override.aes = list(size = 3)))
+p1
 dev.off()
 
 name <- paste("EBcoBART_flex_True_WAIC.pdf")
@@ -233,11 +239,12 @@ g1 <- ggplot(plot.waic, aes(x=Iteration, y=WAIC)) + # asking it to set the color
 g1
 dev.off()
 
-grid.arrange(p,g1,p1,g)
+grid.arrange(g1,p1,g,p)
 library(patchwork)
+plot_g
 name <- paste("Figure3_Application.pdf")
 pdf(name, width=8,height=6)
-plot_grid(p,g1,p1,g,
+plot_grid(g1,p1,g,p,
           labels = c("a", "b", "c","d"))
 
 dev.off()
